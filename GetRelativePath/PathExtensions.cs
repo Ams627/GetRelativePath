@@ -1,5 +1,8 @@
-﻿using System.IO;
+﻿using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Text;
 
 namespace GetRelativePath
 {
@@ -19,37 +22,32 @@ namespace GetRelativePath
                 return path;
             }
 
-            var splitRelative = relativeFull.Split(Path.DirectorySeparatorChar).Where(x => x != string.Empty).ToArray();
-            var splitPath = pathFull.Split(Path.DirectorySeparatorChar).Where(x => x != string.Empty).ToArray();
+            var separatorArray = new[] { Path.DirectorySeparatorChar };
+            var splitRelative = relativeFull.Split(separatorArray, StringSplitOptions.RemoveEmptyEntries);
+            var splitPath = pathFull.Split(separatorArray).Where(x => x != string.Empty).ToArray();
 
-            int firstNonCommon = 0;
-            for (int i = 0; i < splitPath.Length; i++)
+            if (splitPath.Length < splitRelative.Length)
             {
-                bool segmentEqual = true;
-                if (i < splitRelative.Length)
-                {
-                    segmentEqual = splitRelative[i] == splitPath[i];
-                    if (segmentEqual)
-                    {
-                        continue;
-                    }
-                }
-                if (!segmentEqual)
-                {
-                    return pathFull;
-                }
-                firstNonCommon = i;
-                break;
+                return path;
             }
 
-            var result = Path.Combine(splitPath.Skip(firstNonCommon).ToArray());
-            return result;
+            int count = 0;
+            while (count < splitRelative.Length)
+            {
+                if (splitRelative[count] != splitPath[count])
+                {
+                    return path;
+                }
+                count++;
+            }
+
+            return Path.Combine(splitPath.Skip(count).ToArray());
         }
 
 
         public static string GetBashPath(string path)
         {
-            var splitPath = path.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar });
+            var splitPath = path.Split(new[] { Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar }, StringSplitOptions.RemoveEmptyEntries);
             if (!splitPath.Any())
             {
                 return path;
@@ -58,6 +56,30 @@ namespace GetRelativePath
             if (splitPath[0].Length == 2 && splitPath[0][1] == ':' && char.IsLetter(splitPath[0][0]))
             {
                 return string.Join("/", new[] { $"/{char.ToLower(splitPath[0][0])}" }.Concat(splitPath.Skip(1)));
+            }
+            if (path.StartsWith("\\\\"))
+            {
+                // local function to insert slashes:
+                IEnumerable<string> GetModifiedSegments()
+                {
+                    yield return $"//{splitPath.First()}";
+                    foreach (var seg in splitPath.Skip(1))
+                    {
+                        var builder = new StringBuilder("");
+                        foreach (var c in seg)
+                        {
+                            if (c == ' ' || c == '$' || c == '(' || c == ')')
+                            {
+                                builder.Append('\\');
+                            }
+                            builder.Append(c);
+                        }
+                        yield return builder.ToString();
+                    }
+                }
+
+                return string.Join("/", GetModifiedSegments());
+
             }
             return string.Join("/", splitPath);
         }

@@ -6,6 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using FluentAssertions;
+
 using System.IO;
 
 namespace GetRelativePath.Tests
@@ -25,7 +26,7 @@ namespace GetRelativePath.Tests
 
 
         [TestMethod()]
-        public void GetRelativePathTestStandardTests()
+        public void GetRelativePathTestStandardTest1()
         {
             var path3 = @"c:\temp\goat\elephant";
             var path4 = @"c:\temp\goat\elephant\sheep\monkey";
@@ -38,6 +39,26 @@ namespace GetRelativePath.Tests
             var path6 = @"c:\temp\goat\elephant\sheep\monkey";
             relativePath = PathExtensions.GetRelativePath(path5, path6);
             relativePath.Should().Be(expected);
+        }
+
+        [TestMethod()]
+        public void GetRelativePathTestStandardTest2()
+        {
+            var path1 = @"R:\temp\git-test3\trees\g1";
+            var path2 = @"R:\temp\git-test3\trees\g1\fred\jim";
+            var relativePath = PathExtensions.GetRelativePath(path1, path2);
+            var expected = MakeExpectedPath("fred", "jim");
+            relativePath.Should().Be(expected);
+        }
+
+
+        [TestMethod()]
+        public void GetRelativePathTestPathsSame()
+        {
+            var path1 = @"R:\temp\git-test3\trees\g1";
+            var path2 = @"R:\temp\git-test3\trees\g1";
+            var relativePath = PathExtensions.GetRelativePath(path1, path2);
+            relativePath.Should().Be(string.Empty);
         }
 
         [TestMethod()]
@@ -70,6 +91,32 @@ namespace GetRelativePath.Tests
             relativePath.Should().Be(expectedPath);
         }
 
+        /// <summary>
+        /// test two empty paths
+        /// </summary>
+        [TestMethod()]
+        public void GetRelativeEmpty()
+        {
+            var path1 = string.Empty;
+            var path2 = string.Empty;
+
+            Action act = () => PathExtensions.GetRelativePath(path1, path2);
+            act.Should().ThrowExactly<ArgumentException>();
+        }
+
+
+        /// <summary>
+        /// test two root paths which are the same:
+        /// </summary>
+        [TestMethod()]
+        public void GetRelativeTwoSameRoots()
+        {
+            var path1 = @"c:\";
+
+            var result = PathExtensions.GetRelativePath(path1, path1);
+            result.Should().Be(string.Empty);
+        }
+
 
         [TestMethod()]
         public void GetRelativePathNotRelative()
@@ -97,5 +144,14 @@ namespace GetRelativePath.Tests
             var bash2 = PathExtensions.GetBashPath(path2);
             bash2.Should().Be("/c/temp/dog/cat/hamster");
         }
+
+        [TestMethod()]
+        public void GetBashPathUNC()
+        {
+            var path1 = @"\\armadillo\c$\bin\";
+            var bash1 = PathExtensions.GetBashPath(path1);
+            bash1.Should().Be(@"//armadillo/c\$/bin");
+        }
+
     }
 }
